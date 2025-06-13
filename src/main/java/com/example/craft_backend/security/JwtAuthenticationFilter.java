@@ -31,22 +31,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        String username = null;
+        String email = null;
         String jwtToken = null;
 
         // JWT token is in the form "Bearer token"
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwtToken = authHeader.substring(7);
             try {
-                username = jwtUtil.extractUsername(jwtToken);
+                email = jwtUtil.extractEmail(jwtToken);
             } catch (Exception e) {
                 logger.error("Unable to extract JWT token", e);
             }
         }
 
         // Validate token and set authentication context
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(email);
             if (jwtUtil.validateToken(jwtToken, userDetails.getUsername())) {
  
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

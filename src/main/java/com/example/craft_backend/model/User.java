@@ -1,7 +1,5 @@
 package com.example.craft_backend.model;
 
-
-
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -26,11 +24,18 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false, unique = true)
+    private String email; 
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
     private Set<String> roles;
 
     @Version
-    private Long version; // Add this for optimistic locking
+    private Long version;
+    
+    @Column(nullable = false)
+    private boolean approved = false;
+
 }

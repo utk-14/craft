@@ -33,9 +33,9 @@ public class JwtUtil {
     private final long jwtExpirationMs = 24 * 60 * 60 * 1000; // 24 hours
 
     // Generate token for username
-    public String generateToken(String username) {
+    public String generateToken(String email) {
         return Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
                 .signWith(secretKey, SignatureAlgorithm.HS512)
@@ -43,7 +43,7 @@ public class JwtUtil {
     }
 
     // Extract username from token
-    public String extractUsername(String token) {
+    public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
@@ -60,7 +60,7 @@ public class JwtUtil {
 
     // Validate token
     public boolean validateToken(String token, String username) {
-        final String extractedUsername = extractUsername(token);
+        final String extractedUsername = extractEmail(token);
         return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
 

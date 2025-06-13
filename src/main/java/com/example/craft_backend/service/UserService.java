@@ -2,6 +2,7 @@ package com.example.craft_backend.service;
 
 import com.example.craft_backend.model.User;
 import com.example.craft_backend.payload.RegisterRequest;
+import com.example.craft_backend.payload.UpdateProfileRequest;
 import com.example.craft_backend.repository.UserRepository;
 import com.example.craft_backend.security.JwtUtil;
 
@@ -23,46 +24,75 @@ public class UserService {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
 
-   public User registerUser(RegisterRequest request) {
-    if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-        throw new RuntimeException("Username already taken");
+    // ✅ Register user
+    public User registerUser(RegisterRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered");
+        }
+
+        String roleInput = request.getRole();
+        if (roleInput == null || roleInput.isBlank()) {
+            throw new RuntimeException("Role must be provided");
+        }
+
+        roleInput = roleInput.toUpperCase();
+
+        if (!List.of("ADMIN", "SELLER", "BUYER").contains(roleInput)) {
+            throw new RuntimeException("Invalid role: " + roleInput);
+        }
+
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRoles(Collections.singleton(roleInput));
+
+        return userRepository.save(user);
     }
 
-    // Validate role input safely with null check
-    String roleInput = request.getRole();
-    if (roleInput == null || roleInput.isBlank()) {
-        throw new RuntimeException("Role must be provided");
-    }
-    roleInput = roleInput.toUpperCase();
-
-    if (!List.of("ADMIN", "SELLER", "BUYER").contains(roleInput)) {
-        throw new RuntimeException("Invalid role: " + roleInput);
+    // ✅ Get user by email (used in AuthController)
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
     }
 
-    User user = new User();
-    user.setUsername(request.getUsername());
-    user.setPassword(passwordEncoder.encode(request.getPassword()));
-    user.setRoles(Collections.singleton(roleInput)); // single role as Set<String>
-
-    return userRepository.save(user);
-}
-
-    
-
-
-
-    public String loginUser(String username, String password) {
-        // Authenticate user
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
-        );
-
-        // If authentication succeeds, generate JWT token
-        User user = userRepository.findByUsername(username)
+    public void updateUserProfile(String email, UpdateProfileRequest request) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return jwtUtil.generateToken(user.getUsername());
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
+        userRepository.save(user);
     }
 
-   
+    public List<User> getPendingSellers() {
+        return userRepository.findByRolesContainingAndApprovedFalse("SELLER");
+    }
+
+    public User approveSeller(Long sellerId) {
+        User user = userRepository.findById(sellerId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.getRoles().contains("SELLER")) {
+            throw new RuntimeException("User is not a seller");
+        }
+
+        user.setApproved(true);
+        return userRepository.save(user);
+    }
+
+    public User suspendUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setApproved(false);
+        return userRepository.save(user);
+    }
+
 }
